@@ -1,0 +1,92 @@
+{
+  "projectName": "tasker",
+  "scanTimestamp": "2026-01-15T17:16:11+08:00",
+  "version": "1.0.0",
+  "modules": [
+    {
+      "name": "frontend",
+      "path": "src",
+      "type": "vue3-typescript",
+      "entry": "src/main.ts",
+      "description": "Vue 3 前端应用，使用 Composition API、Pinia 状态管理、Vue Router 路由、Vue I18n 国际化",
+      "technologies": ["Vue 3", "TypeScript", "Vite", "Naive UI", "UnoCSS", "Pinia", "Vue Router", "Vue I18n", "Axios"],
+      "keyFiles": [
+        "src/main.ts",
+        "src/App.vue",
+        "src/router/index.ts",
+        "src/locales/index.ts",
+        "src/utils/request.ts"
+      ],
+      "subModules": [
+        {
+          "name": "layouts",
+          "path": "src/layouts",
+          "description": "布局组件：支持侧边栏和顶部菜单两种布局"
+        },
+        {
+          "name": "views",
+          "path": "src/views",
+          "description": "页面视图：包含首页和各种测试页面"
+        },
+        {
+          "name": "components",
+          "path": "src/components",
+          "description": "公共组件：语言切换器、布局切换器、用户资料"
+        },
+        {
+          "name": "stores",
+          "path": "src/stores",
+          "description": "Pinia 状态管理：主题和布局状态"
+        },
+        {
+          "name": "sys-methods",
+          "path": "src/sys-methods",
+          "description": "系统底层方法封装：电源、网络、蓝牙、音频、通知、自启动、文件"
+        },
+        {
+          "name": "locales",
+          "path": "src/locales",
+          "description": "国际化配置：支持中英文切换"
+        }
+      ]
+    },
+    {
+      "name": "backend",
+      "path": "src-tauri",
+      "type": "rust-tauri",
+      "entry": "src-tauri/src/main.rs",
+      "description": "Tauri 2.0 Rust 后端，提供系统级能力和原生功能",
+      "technologies": ["Rust", "Tauri 2.0", "Serde"],
+      "keyFiles": [
+        "src-tauri/src/main.rs",
+        "src-tauri/src/lib.rs",
+        "src-tauri/Cargo.toml",
+        "src-tauri/tauri.conf.json"
+      ],
+      "plugins": [
+        "tauri-plugin-opener",
+        "tauri-plugin-shell",
+        "tauri-plugin-notification",
+        "tauri-plugin-dialog",
+        "tauri-plugin-autostart",
+        "tauri-plugin-os"
+      ]
+    }
+  ],
+  "coverage": {
+    "totalFiles": 29,
+    "scannedFiles": 29,
+    "percentage": 100,
+    "ignoredPatterns": [
+      "node_modules/**",
+      "dist/**",
+      "dist-ssr/**",
+      "src-tauri/target/**",
+      "*.log",
+      "*.local"
+    ]
+  },
+  "gaps": [],
+  "truncated": false,
+  "nextSteps": []
+}
