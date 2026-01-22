@@ -1,89 +1,84 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, h } from 'vue'
 import { useMessage } from 'naive-ui'
+import type { DropdownOption } from 'naive-ui'
 
 const message = useMessage()
 
+// 登录状态管理
+const isLoggedIn = ref(false) // 默认未登录
+
 // 模拟用户数据
 const userInfo = ref({
-  username: 'Admin User',
-  email: 'admin@trao-ui.com',
-  role: '超级管理员',
-  avatar: 'https://07akioni.oss-cn-beijing.aliyuncs.com/07akioni.jpeg',
-  department: '技术研发部',
-  joinDate: '2024-01-01'
+  username: '0103租户1',
+  avatar: ''
 })
 
+// 下拉菜单选项
+const dropdownOptions = computed<DropdownOption[]>(() => {
+  if (isLoggedIn.value) {
+    return [
+      {
+        label: '退出登录',
+        key: 'logout',
+        icon: () => h('div', { class: 'i-carbon-logout' })
+      }
+    ]
+  } else {
+    return [
+      {
+        label: '登录',
+        key: 'login',
+        icon: () => h('div', { class: 'i-carbon-login' })
+      }
+    ]
+  }
+})
+
+const handleSelect = (key: string) => {
+  if (key === 'logout') {
+    handleLogout()
+  } else if (key === 'login') {
+    handleLogin()
+  }
+}
+
 const handleLogout = () => {
+  isLoggedIn.value = false
   message.success('已退出登录')
 }
 
-const handleProfile = () => {
-  message.info('跳转至个人中心')
+const handleLogin = () => {
+  isLoggedIn.value = true
+  message.success('登录成功')
 }
 </script>
 
 <template>
-  <n-popover trigger="click" placement="bottom-end" style="padding: 0; border-radius: 16px;">
-    <template #trigger>
+  <n-dropdown
+    trigger="click"
+    placement="bottom-end"
+    :options="dropdownOptions"
+    @select="handleSelect"
+  >
+    <!-- 胶囊状触发器 -->
+    <div
+      class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-200"
+    >
+      <!-- 头像 -->
       <n-avatar
         round
-        size="medium"
-        :src="userInfo.avatar"
-        class="cursor-pointer hover:opacity-80 transition-opacity"
-      />
-    </template>
-    
-    <div class="w-72">
-      <!-- 头部背景 -->
-      <div class="h-16 bg-gradient-to-r from-[#000000] to-[#007bff] rounded-t-16px"></div>
-      
-      <!-- 个人信息 -->
-      <div class="px-4 pb-4 -mt-8 relative">
-        <n-avatar
-          round
-          :size="64"
-          :src="userInfo.avatar"
-          class="border-4 border-white dark:border-gray-800"
-        />
-        
-        <div class="mt-2">
-          <div class="text-lg font-bold">{{ userInfo.username }}</div>
-          <div class="text-gray-500 text-sm">{{ userInfo.email }}</div>
-        </div>
-
-        <div class="mt-4 space-y-2">
-          <div class="flex items-center text-sm text-gray-600 dark:text-gray-400">
-            <div class="i-carbon-badge mr-2"></div>
-            <span>{{ userInfo.role }}</span>
-          </div>
-          <div class="flex items-center text-sm text-gray-600 dark:text-gray-400">
-            <div class="i-carbon-enterprise mr-2"></div>
-            <span>{{ userInfo.department }}</span>
-          </div>
-          <div class="flex items-center text-sm text-gray-600 dark:text-gray-400">
-            <div class="i-carbon-calendar mr-2"></div>
-            <span>入职时间: {{ userInfo.joinDate }}</span>
-          </div>
-        </div>
-
-        <n-divider class="my-3" />
-
-        <div class="flex justify-between gap-2">
-          <n-button secondary class="flex-1" @click="handleProfile">
-            <template #icon>
-              <div class="i-carbon-user"></div>
-            </template>
-            个人中心
-          </n-button>
-          <n-button secondary type="error" class="flex-1" @click="handleLogout">
-            <template #icon>
-              <div class="i-carbon-logout"></div>
-            </template>
-            退出登录
-          </n-button>
-        </div>
-      </div>
+        :size="28"
+        :src="userInfo.avatar || undefined"
+      >
+        <template v-if="!userInfo.avatar" #icon>
+          <div class="i-carbon-user" />
+        </template>
+      </n-avatar>
+      <!-- 用户名 -->
+      <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+        {{ isLoggedIn ? userInfo.username : '离线模式' }}
+      </span>
     </div>
-  </n-popover>
+  </n-dropdown>
 </template>
