@@ -3,6 +3,14 @@
   "productName": "tasker",
   "version": "0.1.0",
   "identifier": "com.besty.tasker",
+  "plugins": {
+    "updater": {
+      "pubkey": "",
+      "endpoints": [
+        "https://api.github.com/repos/98Protein/tasker/releases/latest"
+      ]
+    }
+  },
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -12,6 +20,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Tasker",
         "width": 1440,
         "height": 810,
@@ -20,6 +29,10 @@
         "center": true
       }
     ],
+    "trayIcon": {
+      "iconPath": "icons/icon.png",
+      "iconAsTemplate": true
+    },
     "security": {
       "csp": null
     }

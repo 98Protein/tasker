@@ -1,5 +1,19 @@
 import { Command } from '@tauri-apps/plugin-shell';
 import { platform } from '@tauri-apps/plugin-os';
+import { invoke } from '@tauri-apps/api/core';
+
+export interface NetworkInfo {
+  ip_address: string;
+  mac_address: string;
+}
+
+/**
+ * 获取网络信息（IP 和 MAC 地址）
+ * 使用 Rust 后端实现
+ */
+export const getNetworkInfo = async (): Promise<NetworkInfo> => {
+  return await invoke<NetworkInfo>('get_network_info');
+};
 
 /**
  * 设置 WiFi 开关状态
