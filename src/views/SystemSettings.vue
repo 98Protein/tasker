@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useThemeStore } from '@/stores/theme'
 import { NIcon } from 'naive-ui'
 import {
@@ -8,9 +8,31 @@ import {
   ServerOutline as BackupIcon,
   InformationCircleOutline as InfoIcon
 } from '@vicons/ionicons5'
-import { getMacAddress } from '@/sys-methods'
+import {
+  getNetworkInfo,
+  setAutoStart,
+  isAutoStartEnabled,
+  loadSettings,
+  saveSettings,
+  backupDatabase,
+  restoreDatabase,
+  getDatabasePath,
+  checkForUpdates,
+  getCurrentVersion,
+  downloadAndInstallUpdate
+} from '@/sys-methods'
+import type { AppSettings } from '@/sys-methods/settings'
 
 const themeStore = useThemeStore()
+
+// 加载状态
+const loading = ref({
+  autoStart: false,
+  minimizeToTray: false,
+  backup: false,
+  restore: false,
+  update: false
+})
 
 // 常规设置
 const generalSettings = ref({
@@ -26,13 +48,13 @@ const networkInfo = ref({
 
 // 备份还原
 const backupSettings = ref({
-  databasePath: 'C:/Users/Admin/AppData/Local/zTasker/data.db'
+  databasePath: '获取中...'
 })
 
 // 关于程序
 const appInfo = ref({
-  name: 'zTasker Desktop',
-  version: 'v1.4.2',
+  name: 'Tasker Desktop',
+  version: 'v0.1.0',
   status: 'Stable',
   license: 'MIT',
   copyright: '© 2024 LOCAL AUTOMATION'
@@ -41,25 +63,9 @@ const appInfo = ref({
 // 获取网络信息
 const fetchNetworkInfo = async () => {
   try {
-    // 获取 MAC 地址
-    const mac = await getMacAddress()
-    networkInfo.value.macAddress = mac || '无法获取'
-
-    // 获取 IP 地址（通过 WebRTC）
-    const pc = new RTCPeerConnection({ iceServers: [] })
-    pc.createDataChannel('')
-    const offer = await pc.createOffer()
-    await pc.setLocalDescription(offer)
-
-    pc.onicecandidate = (ice) => {
-      if (!ice || !ice.candidate || !ice.candidate.candidate) return
-      const ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3})/
-      const match = ipRegex.exec(ice.candidate.candidate)
-      if (match) {
-        networkInfo.value.ipAddress = match[1]
-        pc.close()
-      }
-    }
+    const info = await getNetworkInfo()
+    networkInfo.value.ipAddress = info.ip_address || '无法获取'
+    networkInfo.value.macAddress = info.mac_address || '无法获取'
   } catch (error) {
     console.error('获取网络信息失败:', error)
     networkInfo.value.ipAddress = '无法获取'
@@ -67,21 +73,111 @@ const fetchNetworkInfo = async () => {
   }
 }
 
+// 初始化设置
+const initSettings = async () => {
+  try {
+    // 加载设置
+    const settings = await loadSettings()
+    generalSettings.value.autoStart = settings.general.auto_start
+    generalSettings.value.minimizeToTray = settings.general.minimize_to_tray
+
+    // 同步自启动状态
+    const autoStartEnabled = await isAutoStartEnabled()
+    generalSettings.value.autoStart = autoStartEnabled
+
+    // 获取数据库路径
+    backupSettings.value.databasePath = await getDatabasePath()
+
+    // 获取版本号
+    const version = await getCurrentVersion()
+    appInfo.value.version = `v${version}`
+  } catch (error) {
+    console.error('初始化设置失败:', error)
+  }
+}
+
+// 处理自启动切换
+const handleAutoStartChange = async (value: boolean) => {
+  loading.value.autoStart = true
+  try {
+    await setAutoStart(value)
+    await saveCurrentSettings()
+    window.$message?.success(value ? '已开启开机自启动' : '已关闭开机自启动')
+  } catch (error) {
+    console.error('设置自启动失败:', error)
+    generalSettings.value.autoStart = !value
+    window.$message?.error('设置自启动失败')
+  } finally {
+    loading.value.autoStart = false
+  }
+}
+
+// 处理最小化到托盘切换
+const handleMinimizeToTrayChange = async (value: boolean) => {
+  loading.value.minimizeToTray = true
+  try {
+    await saveCurrentSettings()
+    window.$message?.success(value ? '关闭窗口将最小化到托盘' : '关闭窗口将退出程序')
+  } catch (error) {
+    console.error('设置失败:', error)
+    generalSettings.value.minimizeToTray = !value
+    window.$message?.error('设置失败')
+  } finally {
+    loading.value.minimizeToTray = false
+  }
+}
+
+// 保存当前设置
+const saveCurrentSettings = async () => {
+  const settings: AppSettings = {
+    general: {
+      auto_start: generalSettings.value.autoStart,
+      minimize_to_tray: generalSettings.value.minimizeToTray
+    },
+    updater: {
+      last_check_time: null,
+      auto_update: true
+    }
+  }
+  await saveSettings(settings)
+}
+
 // 组件挂载时获取网络信息
 onMounted(() => {
   fetchNetworkInfo()
+  initSettings()
 })
 
 // 处理立即备份
-const handleBackup = () => {
-  console.log('执行立即备份')
-  window.$message?.success('备份成功')
+const handleBackup = async () => {
+  loading.value.backup = true
+  try {
+    const result = await backupDatabase()
+    if (result) {
+      window.$message?.success('备份成功')
+    }
+  } catch (error) {
+    console.error('备份失败:', error)
+    window.$message?.error('备份失败')
+  } finally {
+    loading.value.backup = false
+  }
 }
 
 // 处理从文件还原
-const handleRestore = () => {
-  console.log('从文件还原')
-  window.$message?.info('请选择备份文件')
+const handleRestore = async () => {
+  loading.value.restore = true
+  try {
+    const result = await restoreDatabase()
+    if (result) {
+      window.$message?.success('还原成功，请重启应用以生效')
+    }
+  } catch (error) {
+    console.error('还原失败:', error)
+    window.$message?.error('还原失败')
+  } finally {
+    loading.value.restore = false
+  }
 }
 
 // 处理复制路径
@@ -91,15 +187,27 @@ const handleCopyPath = () => {
 }
 
 // 检查更新
-const handleCheckUpdate = () => {
-  console.log('检查更新')
-  window.$message?.info('当前已是最新版本')
+const handleCheckUpdate = async () => {
+  loading.value.update = true
+  try {
+    const newVersion = await checkForUpdates()
+    if (newVersion) {
+      window.$message?.info(`发现新版本: ${newVersion}，正在下载...`)
+      await downloadAndInstallUpdate()
+    } else {
+      window.$message?.success('当前已是最新版本')
+    }
+  } catch (error) {
+    console.error('检查更新失败:', error)
+    window.$message?.error('检查更新失败')
+  } finally {
+    loading.value.update = false
+  }
 }
 
 // 打开用户手册
 const handleOpenManual = () => {
-  console.log('打开用户手册')
-  window.open('https://github.com/yourusername/tasker', '_blank')
+  window.open('https://github.com/98Protein/tasker', '_blank')
 }
 </script>
 
@@ -123,7 +231,11 @@ const handleOpenManual = () => {
               <div class="setting-label">开机自启动</div>
               <div class="setting-desc">在系统启动时自动运行程序</div>
             </div>
-            <n-switch v-model:value="generalSettings.autoStart" />
+            <n-switch
+              v-model:value="generalSettings.autoStart"
+              :loading="loading.autoStart"
+              @update:value="handleAutoStartChange"
+            />
           </div>
 
           <div class="setting-item">
@@ -131,7 +243,11 @@ const handleOpenManual = () => {
               <div class="setting-label">关闭窗口时最小化到托盘</div>
               <div class="setting-desc">保持程序在后台默认运行</div>
             </div>
-            <n-switch v-model:value="generalSettings.minimizeToTray" />
+            <n-switch
+              v-model:value="generalSettings.minimizeToTray"
+              :loading="loading.minimizeToTray"
+              @update:value="handleMinimizeToTrayChange"
+            />
           </div>
         </n-card>
 
@@ -203,7 +319,7 @@ const handleOpenManual = () => {
             </div>
 
             <div class="backup-actions">
-              <n-button type="primary" @click="handleBackup">
+              <n-button type="primary" :loading="loading.backup" @click="handleBackup">
                 <template #icon>
                   <n-icon>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -214,7 +330,7 @@ const handleOpenManual = () => {
                 立即备份
               </n-button>
 
-              <n-button @click="handleRestore">
+              <n-button :loading="loading.restore" @click="handleRestore">
                 <template #icon>
                   <n-icon>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -252,7 +368,7 @@ const handleOpenManual = () => {
             </div>
 
             <div class="app-actions">
-              <n-button type="info" @click="handleCheckUpdate">
+              <n-button type="info" :loading="loading.update" @click="handleCheckUpdate">
                 检查更新
               </n-button>
               <n-button @click="handleOpenManual">

@@ -6,3 +6,6 @@ export * from './system';
 export * from './notification';
 export * from './autostart';
 export * from './file';
+export * from './settings';
+export * from './database';
+export * from './updater';
